@@ -9,7 +9,6 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import webbrowser
 from flask import Blueprint
-import importlib.resources
 from flask import cli
 from flask import Response
 from flask import request
@@ -23,9 +22,9 @@ def initChromaviz(col: chromadb.api.models.Collection.Collection):
 
 @visualize_bp.route("/visualize", methods=["GET"])
 def hello_world():
-    with importlib.resources.open_text("chromaviz", "index.html") as file:
-            contents = file.read()
-            return contents
+    with open("index.html", "r") as file:
+        contents = file.read()
+        return contents
 
 @visualize_bp.route('/assets/<path:filename>')
 def serve_assets(filename):
@@ -39,9 +38,9 @@ def serve_assets(filename):
     # Logic to serve the assets
     # Here, you can use the `filename` parameter to determine which asset to serve
     # You can use the `url_for` function to generate the URL for the asset dynamically
-    with importlib.resources.open_text("chromaviz", filename) as file:
-            contents = file.read()
-            return Response(contents, mimetype=mime)
+    with open(filename, "r") as file:
+        contents = file.read()
+        return Response(contents, mimetype=mime)
 
 @visualize_bp.route("/import-data", methods=["POST"])
 def import_data_api():
