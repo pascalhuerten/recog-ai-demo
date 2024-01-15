@@ -16,6 +16,8 @@ cli.show_server_banner = lambda *_: None
         
 visualize_bp = Blueprint('visualize', __name__)
 
+data = [[]]
+
 def initChromaviz(col: chromadb.api.models.Collection.Collection):
     global data
     data = col.get(include=["documents", "metadatas", "embeddings"])
