@@ -1,18 +1,22 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11
+# For more information, please refer to https://aka.ms/vscode-docker-python
+FROM python:3.10-slim
 
-# Set the working directory within the container
+# Warning: A port below 1024 has been exposed. This requires the image to run as a root user which is not a best practice.
+# For more information, please refer to https://aka.ms/vscode-docker-python-user-rights`
+EXPOSE 1808
+
+# Keeps Python from generating .pyc files in the container
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Turns off buffering for easier container logging
+ENV PYTHONUNBUFFERED=1
+
+# Install pip requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
 WORKDIR /app
-
-# Copy the current directory contents into the container at /app
 COPY . /app
 
-RUN pip install --upgrade pip
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Make port 80 available to the world outside this container
-EXPOSE 80
-
-# Run the Flask app when the container launches
-CMD ["flask", "run", "--host", "0.0.0.0", "--port", "80"]
+# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
+CMD ["gunicorn", "--bind", "0.0.0.0:1808", "app:app"]

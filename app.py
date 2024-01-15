@@ -9,8 +9,11 @@ import json
 import os
 from dotenv import load_dotenv
 from recog_ai import recognition_assistant
+from visualize.visualize import visualize_bp, initChromaviz
+
 
 app = Flask(__name__)
+app.register_blueprint(visualize_bp)
 CORS(app)
 
 
@@ -35,13 +38,11 @@ def load_moduledb(embedding):
 embedding = load_embedding()
 moduledb = load_moduledb(embedding)
 
+initChromaviz(moduledb._collection)
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify(
-        {"about": "This is a prototype for an ai-assisted recognition workflow."}
-    )
-
+    return render_template('index.html')
 
 # Endpunkt für die Startseite
 @app.route("/find_module", methods=["GET", "POST"])
