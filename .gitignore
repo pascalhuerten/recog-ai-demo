@@ -2,5 +2,4 @@
 *.pickle
 venv
 .env
-data/*
 .vscode/*
