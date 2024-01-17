@@ -3,10 +3,10 @@
 <head>
     <title>Modulanerkennung</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../static/recog-styles.css">
+    <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container mt-5 main">
         <h1 class="mb-4">Modulanerkennung</h1>
         <form method="POST" enctype="multipart/form-data">
             <div class="form-group">
@@ -72,6 +72,17 @@
             {% endfor %}
         </ul>
         {% endif %}
+    </div>
+
+    <div class="metadata">
+        <div>
+            <p>Autoren: <a href="mailto:pascal.huerten@th-luebeck.de">Pascal Hürten</a>, <a href="mailto:andreas.wittke@th-luebeck.de">Andreas Wittke</a></p>
+            <p>Institut für Interaktive Systeme (ISy) - TH Lübeck, 17.01.2024</p>
+        </div>
+        <div class="center-aligned">
+            <p>Version: 1808-alpha</p>
+            <img src="/static/Logo_THL.svg" alt="TH Lübeck Logo" width="100px">
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>

@@ -24,3 +24,29 @@
 .markdown h4 {
   font-size: 1.1em;
 }
+
+.center-aligned {
+    display: flex;
+    flex-direction: column;
+}
+
+.metadata img {
+  align-self: center;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.metadata {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+  width: 100%;
+  background-color: #f8f9fa;
+  color: black;
+  text-align: left;
+  padding: 10px 20px;
+}
