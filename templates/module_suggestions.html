@@ -54,7 +54,7 @@
         <ul class="list-unstyled mt-4">
             {% for module in module_suggestions %}
                 <li>
-                    <form method="POST" action="/select_module">
+                    <form method="POST" action="./select_module">
                         <div class="card mb-3">
                             <div class="card-body">
                                 <input type="hidden" name="selected_module" value="{{ module.json }}">
@@ -81,7 +81,7 @@
         </div>
         <div class="center-aligned">
             <p>Version: 1808-alpha</p>
-            <img src="/static/Logo_THL.svg" alt="TH Lübeck Logo" width="100px">
+            <img src="./static/Logo_THL.svg" alt="TH Lübeck Logo" width="100px">
         </div>
     </div>
 
