@@ -3,48 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <title>KI Anerkennungs Workflow</title>
+    <link rel="stylesheet" href="./static/style.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            display: flex;
         }
+
         .container {
             text-align: center;
-        }
-        .button {
-            display: inline-block;
-            margin-top: 1em;
-            padding: 0.5em 1em;
-            background-color: #007BFF;
-            color: white;
-            text-decoration: none;
-        }
-        .button:hover {
-            background-color: #0056b3;
-        }
-        .metadata {
-            font-size: 0.8em;
-            color: #888;
-            margin-top: 2em;
+            max-width: 700px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Willkommen beim KI-unterstützten Anerkennungs Workflow</h1>
-        <p>Der KI-unterstützte Anerkennungs Workflow nutzt Sprachmodelle und Semantische Suche, um beim Vergleich und der Anerkennung von Modulen zu assistieren.</p>
-        <a class="button" href="./find_module">Starte einen Workflow</a>
+        <h1>Willkommen beim KI-unterstützten Anerkennungsprozess</h1>
+        <p>Dies ist ein Prototyp für ein Modulanerkennungsverfahren durch KI. Ein Studierender möchte sein Modul an der TH Lübeck anerkennen lassen. Er lädt das Modulhandbuch entweder als PDF hoch oder kopiert es in das Textfeld. Dann wird eine LLM z.B. GPT-4 befragt und wandelt das nicht standardisierte Modulhandbuch in ein strukturiertes Format um. Dieses kann von KIs besser verarbeitet werden. Diese Struktur wird dann mit der lokalen Modulhandbuch-Datenbank der TH Lübeck verglichen. Damit dies für die KI besser funktioniert, wird eine Vektordatenbank (ChromaDB) verwendet. Im letzten Schritt wird das ausgewählte Modul mit dem externen Modul verglichen und ein Modulvergleich durchgeführt.</p>
+        <p>Dies ist nur ein Prototyp, der die Möglichkeiten aufzeigen soll. Für einen zukünftigen Prozess in einer realen Umgebung fehlen noch Qualitätssicherungsprozesse und Feedbacksysteme. Dennoch lässt der Prototyp erahnen, was hier in Zukunft möglich sein wird.</p>
+        <a class="button" href="./find_module">Starte Anerkennungsprozess</a>
         <br>
-        <a class="button" href="./visualize">Visualisiere Kurs-Embeddings</a>
-        <div class="metadata">
+        <a class="button" href="./visualize">Erzeuge Vektormodell der Lübecker Moduldatenbank</a>
+    </div>        
+    <div class="metadata">
+        <div>
             <p>Autoren: <a href="mailto:pascal.huerten@th-luebeck.de">Pascal Hürten</a>, <a href="mailto:andreas.wittke@th-luebeck.de">Andreas Wittke</a></p>
             <p>Institut für Interaktive Systeme (ISy) - TH Lübeck, 17.01.2024</p>
+        </div>
+        <div class="center-aligned">
             <p>Version: 1808-alpha</p>
             <img src="./static/Logo_THL.svg" alt="TH Lübeck Logo" width="100px">
         </div>

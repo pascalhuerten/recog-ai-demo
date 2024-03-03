@@ -53,8 +53,6 @@ def import_data_api():
 @visualize_bp.route("/data", methods=["GET"])
 def data_api():
     df = pd.DataFrame.from_dict(data=data["embeddings"])
-    print(df)
-    print('Size of the dataframe: {}'.format(df.shape))
     
     pca_50 = PCA(n_components=50)
     pca_result_50 = pca_50.fit_transform(df)

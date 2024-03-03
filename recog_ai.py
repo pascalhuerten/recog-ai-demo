@@ -17,8 +17,8 @@ class recognition_assistant:
         module_suggestions = []
         for module, score in docs:
             workload = ""
-            workload_iso = module.metadata["workload"]
             try:
+                workload_iso = module.metadata["workload"]
                 duration = isodate.parse_duration(workload_iso)
                 hours = int(duration.total_seconds() / 3600)
                 workload = str(hours) + " Stunden"
@@ -57,9 +57,12 @@ class recognition_assistant:
         doc = doc[: 4096 - len(systemmessage)]
 
         chat = ChatOpenAI(
-            model="gpt-3.5-turbo",
+            # model="gpt-3.5-turbo",
+            model="tgi",
+            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
             temperature=0.1,
-            openai_api_key=self.openai_api_key,
+            max_tokens=1024,
+            # openai_api_key=self.openai_api_key,
             request_timeout=40,
             max_retries=2,
         )
@@ -86,41 +89,41 @@ class recognition_assistant:
 
     def getExaminationResult(self, module_internal, module_external):
         systemmessage = """
-            Ich bin als KI-Assistent*in im Prüfungsamt einer Hochschule tätig. Meine Hauptaufgaben umfassen die Beantwortung von Fragen zu Modulen und die Überprüfung, ob ein externes Modul auf ein internes Modul anerkannt werden kann.
+Ich bin als KI-Assistent*in im Prüfungsamt einer Hochschule tätig. Meine Hauptaufgaben umfassen die Beantwortung von Fragen zu Modulen und die Überprüfung, ob ein externes Modul auf ein internes Modul anerkannt werden kann.
 
-            Folgende Kriterien werden bei der Prüfung der Anerkennbarkeit berücksichtigt:
-            - Lernziele
-            - ECTS-Punkte/Credits
-            - Arbeitsaufwand
-            - Bildungsniveau
-            - Prüfungsform
+Folgende Kriterien werden bei der Prüfung der Anerkennbarkeit berücksichtigt:
+- Lernziele
+- ECTS-Punkte/Credits
+- Arbeitsaufwand
+- Bildungsniveau
+- Prüfungsform
 
-            Bei der Bewertung werden diese Kriterien gleichwertig berücksichtigt.
-            Eine Ausnahme ist der Arbeitsaufwand. Dieser sollte nicht in die Bewertung einfließen, wenn die Infromationen dazu nicht gut vergleichbar sind.
-            Beide Module sollten möglichst demselben Bildungsniveau (Bachelor oder Master) entsprechen.
-            Wenn das externe Modul mehr Credits aufweist als das interne Modul oder die Diskrepanz etwa 10 Prozent beträgt, ist dies kein Grund für eine Nichtanerkennung. Wenn das interne Modul jedoch signifikant mehr Credits hat als das externe Modul, kann höchstens eine teilweise Anerkennung erfolgen.
-            Das Kriterium der Prüfungsform sollte nicht berücksichtigt werden wenn, diese Informatione nicht für beide Module vorliegt und nicht vergleichbar ist.
+Bei der Bewertung werden diese Kriterien gleichwertig berücksichtigt.
+Eine Ausnahme ist der Arbeitsaufwand. Dieser sollte nicht in die Bewertung einfließen, wenn die Infromationen dazu nicht gut vergleichbar sind.
+Beide Module sollten möglichst demselben Bildungsniveau (Bachelor oder Master) entsprechen.
+Wenn das externe Modul mehr Credits aufweist als das interne Modul oder die Diskrepanz etwa 10 Prozent beträgt, ist dies kein Grund für eine Nichtanerkennung. Wenn das interne Modul jedoch signifikant mehr Credits hat als das externe Modul, kann höchstens eine teilweise Anerkennung erfolgen.
+Das Kriterium der Prüfungsform sollte nicht berücksichtigt werden wenn, diese Informatione nicht für beide Module vorliegt und nicht vergleichbar ist.
 
-            Es gibt drei mögliche Ergebnisse für die Prüfung:
-            - Vollständige Anerkennung, wenn mindestens 80 Prozent der Lernziele übereinstimmen
-            - Teilweise Anerkennung, wenn mindestens 50 Prozent der Lernziele übereinstimmen
-            - Keine Anerkennung, wenn nur wenige oder keine Lernziele übereinstimmen
+Es gibt drei mögliche Ergebnisse für die Prüfung:
+- Vollständige Anerkennung, wenn mindestens 80 Prozent der Lernziele übereinstimmen
+- Teilweise Anerkennung, wenn mindestens 50 Prozent der Lernziele übereinstimmen
+- Keine Anerkennung, wenn nur wenige oder keine Lernziele übereinstimmen
 
-            Die Abschnitte und Inhalte meiner Antworten strukturiere ich mit Markdown. Kriterien werden einzeln bewertet. Lernziele müssen nur bei Unterschieden aufgelistet werden.
-            Am Schluss der Prüfung folgt eine prägnante, hervorgehobene Zusammenfassung des Prüfungsergebnisses mit dem Ergebnis: "Es wird auf Basis des Vergelichs der Module  eine *Vollständige Anerkennung*, *Teilweise Anerkennung* oder *Keine Anerkennung* empfohlen.
-            Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines generativen Sprachmodelles generiert wurde.
+Die Abschnitte und Inhalte meiner Antworten strukturiere ich mit Markdown. Kriterien werden einzeln bewertet. Lernziele müssen nur bei Unterschieden aufgelistet werden.
+Am Schluss der Prüfung folgt eine prägnante, hervorgehobene Zusammenfassung des Prüfungsergebnisses mit dem Ergebnis: "Es wird auf Basis des Vergelichs der Module  eine *Vollständige Anerkennung*, *Teilweise Anerkennung* oder *Keine Anerkennung* empfohlen.
+Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines generativen Sprachmodelles namens mixtral-8x7b generiert wurde. Das Open-Source Modell wurde von MistralAI entwickelt und wird von der Technischen Hochschule Lübeck bereitgestellt.
         """
 
         humanmessage = (
             """
-            ## Externes Modul
+## Externes Modul
 
             """
             + module_external
             + """
 
 
-            ## Internes Modul:
+## Internes Modul:
 
             """
             + module_internal
@@ -129,9 +132,12 @@ class recognition_assistant:
         )
 
         chat = ChatOpenAI(
-            model="gpt-4-1106-preview",
+            # model="gpt-4-1106-preview",
+            model="tgi",
+            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
             temperature=0.1,
-            openai_api_key=self.openai_api_key,
+            max_tokens=1024,
+            # openai_api_key=self.openai_api_key,
             request_timeout=60,
             max_retries=2,
         )
@@ -141,4 +147,6 @@ class recognition_assistant:
             HumanMessage(content=humanmessage),
         ]
 
-        return markdown.markdown(chat(messages).content)
+        markdown_result = markdown.markdown(chat(messages).content)
+
+        return markdown_result
