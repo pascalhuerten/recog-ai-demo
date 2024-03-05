@@ -56,7 +56,7 @@ def find_module():
             if uploaded_file.filename.endswith(".pdf"):
                 with pdfplumber.open(uploaded_file) as pdf:
                     doc = ""
-                    for page_num in range(max(4, len(pdf.pages))):
+                    for page_num in range(max(2, len(pdf.pages))):
                         doc += pdf.pages[page_num].extract_text()
             # Check if it's a TXT file
             elif uploaded_file.filename.endswith(".txt"):

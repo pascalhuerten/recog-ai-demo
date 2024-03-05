@@ -1,5 +1,6 @@
 import json
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.schema import HumanMessage, SystemMessage
 import markdown
 import os
@@ -41,6 +42,23 @@ class recognition_assistant:
         # Return the module suggestions
         return module_suggestions
 
+    def get_chat_model(self):
+        thl_chat = ChatOpenAI(
+            model="mixtral-8x7b",
+            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
+            openai_api_key="-",
+            temperature=0.1,
+            max_tokens=1024,
+        )
+
+        mistral_chat = ChatMistralAI(
+            model="mistral-large",
+            temperature=0.1,
+            max_tokens=1024,
+        )
+
+        return mistral_chat.with_fallbacks([thl_chat])
+
     def getModulInfo(self, doc):
         systemmessage = """Analysiere die gegebenen Modulbeschreibungen und fülle anschließend die Lücken in folgendem JSON sinvoll und in Deutscher Sprache aus. Der Workload sollte in Stunden pro Semester angegeben sein. Das Level bezieht sich auf das Bildungsniveau des Kurses und kann nur "Bachelor" oder "Master" enthalten. Wenn eine passende Information in der gegebenen Modulbeschreibung fehlt, soll das Attribut den Wert null bekommen. Achte darauf dass das Ergebnis valides JSON ist.
         {
@@ -56,26 +74,19 @@ class recognition_assistant:
         # Restrict length of doc to 4096 minus the length of the system message
         doc = doc[: 4096 - len(systemmessage)]
 
-        chat = ChatOpenAI(
-            # model="gpt-3.5-turbo",
-            model="tgi",
-            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
-            temperature=0.1,
-            max_tokens=1024,
-            # openai_api_key=self.openai_api_key,
-            request_timeout=40,
-            max_retries=2,
-        )
+        chat = self.get_chat_model()
 
         messages = [SystemMessage(content=systemmessage), HumanMessage(content=doc)]
 
         try:
-            response = chat(messages).content
+            response = chat.invoke(messages).content
+            print(response)
             # Remove all characters before and after {}
             response = response[response.find("{") : response.rfind("}") + 1]
             module = json.loads(response)
             module["original_doc"] = doc
-        except:
+        except Exception as e:
+            raise e
             module = {
                 "title": "",
                 "credits": "",
@@ -131,22 +142,15 @@ Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines 
         """
         )
 
-        chat = ChatOpenAI(
-            # model="gpt-4-1106-preview",
-            model="tgi",
-            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
-            temperature=0.1,
-            max_tokens=1024,
-            # openai_api_key=self.openai_api_key,
-            request_timeout=60,
-            max_retries=2,
-        )
+        chat  = self.get_chat_model()
 
         messages = [
             SystemMessage(content=systemmessage),
             HumanMessage(content=humanmessage),
         ]
-
-        markdown_result = markdown.markdown(chat(messages).content)
+    	
+        response = chat.invoke(messages).content
+        print(response)
+        markdown_result = markdown.markdown(response)
 
         return markdown_result
