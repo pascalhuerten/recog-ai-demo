@@ -2,11 +2,22 @@ import json
 from langchain_openai import ChatOpenAI
 from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.schema import HumanMessage, SystemMessage
-from langchain.prompts import HumanMessagePromptTemplate, ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 import markdown
 import os
 import isodate
+from typing import List, Optional
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.pydantic_v1 import BaseModel, Field
+
+
+class ModuleSchema(BaseModel):
+    title: str = Field(description="Titel des Moduls")
+    credits: Optional[int] = Field(None, description="ECTS-Punkte des Moduls")
+    workload: Optional[str] = Field(None, description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'")
+    learninggoals: List[str] = Field(description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste.")
+    assessmenttype: Optional[str] = Field(None, description="Prüfungsform des Moduls")
+    level: Optional[str] = Field(None, description="Bildungsniveau des Moduls. 'Bachelor' oder 'Master'")
 
 
 class recognition_assistant:
@@ -64,55 +75,35 @@ class recognition_assistant:
     def getModulInfo(self, doc):
         # Restrict length of doc to 4096 minus the length of the system message
         doc = doc[: 4096 - 512]
-        messages = [
-            SystemMessage(
-                content=(
-                    "Folgendes Doument ist gegeben:"
-                    ""
-                    "Analysiere die gegebenen Modulbeschreibungen und fülle anschließend die Lücken in folgendem JSON sinvoll und in Deutscher Sprache aus. "
-                    "Der Workload sollte in Stunden pro Semester angegeben sein. Das Level bezieht sich auf das Bildungsniveau des Kurses und kann nur \"Bachelor\" oder \"Master\" enthalten. "
-                    "Wenn eine passende Information in der gegebenen Modulbeschreibung fehlt, soll das Attribut den Wert null bekommen. "
-                    "Achte darauf, dass das Ergebnis valides JSON ist und befolge das folgende JSON Schema genau."
-                )
-            ),
-            HumanMessagePromptTemplate.from_template(
-                "Folgende Modulbeschreibung ist gegeben:"
-                "{doc}"
-                ""
-                "Der JSON OUTPUT beschreibt genau ein Modul als JSON Objekt und die Inhalte sind sauber ins deutsche übersetzt."
-                "Die Antwort enthält keine weiteren Informationen als das eine JSON Objekt."
-                ""
-                "JSON Schema:"
-                "{schema}"
-                ""
-                "Ausgefülltes JSON:"
-            )
-        ]
 
-        chat = self.get_chat_model(False, 512)
-        prompt = ChatPromptTemplate.from_messages(messages)
-        chain = prompt | chat | StrOutputParser()
+        template = (
+            "Folgendes Dokument ist gegeben:\n"
+            "{doc}\n\n"
+            "Analysiere die gegebene Modulbeschreibung oder erbrachte Leistung und extrahiere die relevanten Metadaten.\n\n"
+            "{format_instructions}\n\n"
+            "Gebe nun die extrahierten Modulinformation in deutscher Sprache und konform zum angegeben Schema aus.\n"
+        )
 
-        schema ="""
-{
-    "title": "",
-    "credits": "",
-    "workload": " Stunden",
-    "learninggoals": [],
-    "assessmenttype": "",
-    "level": ""
-}
-"""
+        parser = JsonOutputParser(pydantic_object=ModuleSchema)
+        model = self.get_chat_model(False, 512)
+        prompt = PromptTemplate(
+            template=template,
+            input_variables=["doc"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+
+        chain = prompt | model | parser
 
         try:
-            response = chain.invoke({"doc": doc, "schema": schema})
-            print(response)
+            module = chain.invoke({"doc": doc})
+            # if module is a list, take the first element
+            if isinstance(module, list):
+                module = module[0]
+            print(module)
             # Remove all characters before and after {}
-            response = response[response.find("{") : response.rfind("}") + 1]
-            module = json.loads(response)
             module["original_doc"] = doc
         except Exception as e:
-            raise e
+            print(e)
             module = {
                 "title": "",
                 "credits": "",
