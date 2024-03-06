@@ -2,6 +2,8 @@ import json
 from langchain_openai import ChatOpenAI
 from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.schema import HumanMessage, SystemMessage
+from langchain.prompts import HumanMessagePromptTemplate, ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 import markdown
 import os
 import isodate
@@ -42,44 +44,68 @@ class recognition_assistant:
         # Return the module suggestions
         return module_suggestions
 
-    def get_chat_model(self):
+    def get_chat_model(self, large_model=False, max_tokens=1024):
         thl_chat = ChatOpenAI(
             model="mixtral-8x7b",
             openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
             openai_api_key="-",
             temperature=0.1,
-            max_tokens=1024,
+            max_tokens=max_tokens,
         )
 
         mistral_chat = ChatMistralAI(
-            model="mistral-large",
+            model="mistral-mdeium" if not large_model else "mistral-large",
             temperature=0.1,
-            max_tokens=1024,
+            max_tokens=max_tokens,
         )
 
-        return mistral_chat.with_fallbacks([thl_chat])
+        return thl_chat.with_fallbacks([mistral_chat])
 
     def getModulInfo(self, doc):
-        systemmessage = """Analysiere die gegebenen Modulbeschreibungen und fülle anschließend die Lücken in folgendem JSON sinvoll und in Deutscher Sprache aus. Der Workload sollte in Stunden pro Semester angegeben sein. Das Level bezieht sich auf das Bildungsniveau des Kurses und kann nur "Bachelor" oder "Master" enthalten. Wenn eine passende Information in der gegebenen Modulbeschreibung fehlt, soll das Attribut den Wert null bekommen. Achte darauf dass das Ergebnis valides JSON ist.
-        {
-            "title": "",
-            "credits": "",
-            "workload": " Stunden",
-            "learninggoals": [],
-            "assessmenttype": "",
-            "level": ""
-        }
-        """
-
         # Restrict length of doc to 4096 minus the length of the system message
-        doc = doc[: 4096 - len(systemmessage)]
+        doc = doc[: 4096 - 512]
+        messages = [
+            SystemMessage(
+                content=(
+                    "Folgendes Doument ist gegeben:"
+                    ""
+                    "Analysiere die gegebenen Modulbeschreibungen und fülle anschließend die Lücken in folgendem JSON sinvoll und in Deutscher Sprache aus. "
+                    "Der Workload sollte in Stunden pro Semester angegeben sein. Das Level bezieht sich auf das Bildungsniveau des Kurses und kann nur \"Bachelor\" oder \"Master\" enthalten. "
+                    "Wenn eine passende Information in der gegebenen Modulbeschreibung fehlt, soll das Attribut den Wert null bekommen. "
+                    "Achte darauf, dass das Ergebnis valides JSON ist und befolge das folgende JSON Schema genau."
+                )
+            ),
+            HumanMessagePromptTemplate.from_template(
+                "Folgende Modulbeschreibung ist gegeben:"
+                "{doc}"
+                ""
+                "Der JSON OUTPUT beschreibt genau ein Modul als JSON Objekt und die Inhalte sind sauber ins deutsche übersetzt."
+                "Die Antwort enthält keine weiteren Informationen als das eine JSON Objekt."
+                ""
+                "JSON Schema:"
+                "{schema}"
+                ""
+                "Ausgefülltes JSON:"
+            )
+        ]
 
-        chat = self.get_chat_model()
+        chat = self.get_chat_model(False, 512)
+        prompt = ChatPromptTemplate.from_messages(messages)
+        chain = prompt | chat | StrOutputParser()
 
-        messages = [SystemMessage(content=systemmessage), HumanMessage(content=doc)]
+        schema ="""
+{
+    "title": "",
+    "credits": "",
+    "workload": " Stunden",
+    "learninggoals": [],
+    "assessmenttype": "",
+    "level": ""
+}
+"""
 
         try:
-            response = chat.invoke(messages).content
+            response = chain.invoke({"doc": doc, "schema": schema})
             print(response)
             # Remove all characters before and after {}
             response = response[response.find("{") : response.rfind("}") + 1]
@@ -142,7 +168,7 @@ Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines 
         """
         )
 
-        chat  = self.get_chat_model()
+        chat  = self.get_chat_model(True)
 
         messages = [
             SystemMessage(content=systemmessage),
