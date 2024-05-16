@@ -14,10 +14,17 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 class ModuleSchema(BaseModel):
     title: str = Field(description="Titel des Moduls")
     credits: Optional[int] = Field(None, description="ECTS-Punkte des Moduls")
-    workload: Optional[str] = Field(None, description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'")
-    learninggoals: List[str] = Field(description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste.")
+    workload: Optional[str] = Field(
+        None,
+        description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'",
+    )
+    learninggoals: List[str] = Field(
+        description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste."
+    )
     assessmenttype: Optional[str] = Field(None, description="Prüfungsform des Moduls")
-    level: Optional[str] = Field(None, description="Bildungsniveau des Moduls. 'Bachelor' oder 'Master'")
+    level: Optional[str] = Field(
+        None, description="Bildungsniveau des Moduls. 'Bachelor' oder 'Master'"
+    )
 
 
 class recognition_assistant:
@@ -58,7 +65,7 @@ class recognition_assistant:
     def get_chat_model(self, large_model=False, max_tokens=1024):
         thl_chat = ChatOpenAI(
             model="mixtral-8x7b",
-            openai_api_base="https://mixtral-8x7b.llm.mylab.th-luebeck.dev/v1",
+            openai_api_base=os.getenv("LARGE_CUSTOM_LLM_URL"),
             openai_api_key="-",
             temperature=0.1,
             max_tokens=max_tokens,
@@ -159,13 +166,13 @@ Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines 
         """
         )
 
-        chat  = self.get_chat_model(True)
+        chat = self.get_chat_model(True)
 
         messages = [
             SystemMessage(content=systemmessage),
             HumanMessage(content=humanmessage),
         ]
-    	
+
         response = chat.invoke(messages).content
         print(response)
         markdown_result = markdown.markdown(response)
