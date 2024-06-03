@@ -72,17 +72,26 @@ class recognition_assistant:
         )
 
         mistral_chat = ChatMistralAI(
-            model="mistral-mdeium" if not large_model else "mistral-large",
+            model="mistral-small" if not large_model else "mistral-large",
             temperature=0.1,
             max_tokens=max_tokens,
         )
 
         return thl_chat.with_fallbacks([mistral_chat])
 
-    def getModulInfo(self, doc):
+    def getModulInfo(self, indoc):
         # Restrict length of doc to 4096 minus the length of the system message
-        doc = doc[: 4096 - 512]
 
+        doc = ""
+        try:
+            jsondoc = json.loads(doc)
+            for key in jsondoc:
+                doc += key + ": " + str(jsondoc[key]) + "\n"
+        except:
+            doc = indoc
+
+        doc = doc[: 4096 - 512]
+        
         template = (
             "Folgendes Dokument ist gegeben:\n"
             "{doc}\n\n"
@@ -92,7 +101,7 @@ class recognition_assistant:
         )
 
         parser = JsonOutputParser(pydantic_object=ModuleSchema)
-        model = self.get_chat_model(False, 1024)
+        model = self.get_chat_model(False, 4096)
         prompt = PromptTemplate(
             template=template,
             input_variables=["doc"],
