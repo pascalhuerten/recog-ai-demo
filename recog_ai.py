@@ -89,8 +89,6 @@ class recognition_assistant:
                 doc += key + ": " + str(jsondoc[key]) + "\n"
         except:
             doc = indoc
-
-        doc = doc[: 4096 - 512]
         
         template = (
             "Folgendes Dokument ist gegeben:\n"
