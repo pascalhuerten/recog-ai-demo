@@ -77,7 +77,7 @@ class recognition_assistant:
             max_tokens=max_tokens,
         )
 
-        return thl_chat.with_fallbacks([mistral_chat])
+        return mistral_chat.with_fallbacks([thl_chat])
 
     def getModulInfo(self, indoc):
         # Restrict length of doc to 4096 minus the length of the system message
