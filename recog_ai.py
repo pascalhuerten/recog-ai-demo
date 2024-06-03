@@ -92,7 +92,7 @@ class recognition_assistant:
         )
 
         parser = JsonOutputParser(pydantic_object=ModuleSchema)
-        model = self.get_chat_model(False, 512)
+        model = self.get_chat_model(False, 1024)
         prompt = PromptTemplate(
             template=template,
             input_variables=["doc"],
