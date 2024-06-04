@@ -19,7 +19,7 @@ class ModuleSchema(BaseModel):
         description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'",
     )
     learninggoals: List[str] = Field(
-        description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste."
+        description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste. Beispiel: ['Lernziel 1', 'Lernziel 2']"
     )
     assessmenttype: Optional[str] = Field(None, description="Prüfungsform des Moduls")
     level: Optional[str] = Field(
@@ -77,7 +77,7 @@ class recognition_assistant:
             max_tokens=max_tokens,
         )
 
-        return mistral_chat.with_fallbacks([thl_chat])
+        return thl_chat.with_fallbacks([mistral_chat])
 
     def getModulInfo(self, indoc):
         # Restrict length of doc to 4096 minus the length of the system message
