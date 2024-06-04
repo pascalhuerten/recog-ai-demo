@@ -115,6 +115,14 @@ class recognition_assistant:
             # if module is a list, take the first element
             if isinstance(module, list):
                 module = module[0]
+
+            if module["learninggoals"] and len(module["learninggoals"]) > 0 and isinstance(module["learninggoals"][0], dict):
+                strlist = []
+                # Get values of the dict in the list
+                for item in module["learninggoals"]:
+                    for key, value in item.items():
+                        strlist.append(value)
+            
             print(module)
             # Remove all characters before and after {}
             module["original_doc"] = doc
