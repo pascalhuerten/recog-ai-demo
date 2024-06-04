@@ -7,7 +7,7 @@ import os
 import isodate
 from typing import List, Optional
 from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
+from langchain.output_parsers import PydanticOutputParser
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 
@@ -19,7 +19,7 @@ class ModuleSchema(BaseModel):
         description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'",
     )
     learninggoals: List[str] = Field(
-        description="Lernziele des Moduls. Jedes Lernziel ist ein String in der Liste. Beispiel: ['Lernziel 1', 'Lernziel 2']"
+        description="Lernziele des Moduls. Jedes Lernziel ist ein einfacher String. Beispiel: ['Lernziel 1', 'Lernziel 2']"
     )
     assessmenttype: Optional[str] = Field(None, description="Prüfungsform des Moduls")
     level: Optional[str] = Field(
@@ -98,7 +98,7 @@ class recognition_assistant:
             "Gebe nun die extrahierten Modulinformation in deutscher Sprache und konform zum angegeben Schema aus.\n"
         )
 
-        parser = JsonOutputParser(pydantic_object=ModuleSchema)
+        parser = PydanticOutputParser(pydantic_object=ModuleSchema)
         model = self.get_chat_model(False, 4096)
         prompt = PromptTemplate(
             template=template,
@@ -110,6 +110,8 @@ class recognition_assistant:
 
         try:
             module = chain.invoke({"doc": doc})
+            # to dict
+            module = module.dict()
             # if module is a list, take the first element
             if isinstance(module, list):
                 module = module[0]
