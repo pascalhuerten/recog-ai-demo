@@ -122,6 +122,7 @@ class recognition_assistant:
                 for item in module["learninggoals"]:
                     for key, value in item.items():
                         strlist.append(value)
+                module["learninggoals"] = strlist
             
             print(module)
             # Remove all characters before and after {}
