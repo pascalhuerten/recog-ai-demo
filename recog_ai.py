@@ -30,7 +30,6 @@ class ModuleSchema(BaseModel):
 class recognition_assistant:
     def __init__(self, db):
         self.db = db
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
 
     def getModuleSuggestions(self, doc):
         docs = self.db.similarity_search_with_score(doc, 5)
@@ -64,20 +63,14 @@ class recognition_assistant:
 
     def get_chat_model(self, large_model=False, max_tokens=1024):
         thl_chat = ChatOpenAI(
-            model="mixtral-8x7b",
+            model="gemma-3-27b-it",
             openai_api_base=os.getenv("LARGE_CUSTOM_LLM_URL"),
-            openai_api_key="-",
+            openai_api_key=os.getenv("LLM_API_KEY"),
             temperature=0.1,
             max_tokens=max_tokens,
         )
 
-        mistral_chat = ChatMistralAI(
-            model="mistral-small" if not large_model else "mistral-large",
-            temperature=0.1,
-            max_tokens=max_tokens,
-        )
-
-        return thl_chat.with_fallbacks([mistral_chat])
+        return thl_chat
 
     def getModulInfo(self, indoc):
         # Restrict length of doc to 4096 minus the length of the system message
@@ -164,7 +157,7 @@ Es gibt drei mögliche Ergebnisse für die Prüfung:
 
 Die Abschnitte und Inhalte meiner Antworten strukturiere ich mit Markdown. Kriterien werden einzeln bewertet. Lernziele müssen nur bei Unterschieden aufgelistet werden.
 Am Schluss der Prüfung folgt eine prägnante, hervorgehobene Zusammenfassung des Prüfungsergebnisses mit dem Ergebnis: "Es wird auf Basis des Vergelichs der Module  eine *Vollständige Anerkennung*, *Teilweise Anerkennung* oder *Keine Anerkennung* empfohlen.
-Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines generativen Sprachmodelles namens mixtral-8x7b generiert wurde. Das Open-Source Modell wurde von MistralAI entwickelt und wird von der Technischen Hochschule Lübeck bereitgestellt.
+Gib an dieser Stelle zusätzlich den Hinweis, dass das Ergebnis auf Basis eines generativen OpenSource-Sprachmodelles namens gemma-3-27b-it generiert wurde. Das Open-Source Modell wird von [KISSKI](https://kisski.gwdg.de) bereitgestellt.
         """
 
         humanmessage = (
