@@ -1,0 +1,40 @@
+[run]
+# Coverage.py configuration for recog-ai-demo
+
+source = recog_ai, app
+branch = True
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */site-packages/*
+    .venv/*
+    venv/*
+
+[report]
+# Reporting options
+fail_under = 70
+skip_covered = False
+skip_empty = True
+precision = 2
+show_missing = True
+
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    @abstractproperty
+    except ImportError:
+    except AttributeError:
+    pass
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

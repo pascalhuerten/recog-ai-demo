@@ -4,3 +4,6 @@ venv
 .env
 .vscode/*
 data/preparation/
+log*
+*.log
+.coverage

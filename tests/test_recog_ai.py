@@ -1,6 +1,6 @@
 import json
 
-from recog_ai import recognition_assistant
+from recog_ai import RecognitionAssistant
 
 
 class DummyModule:
@@ -18,9 +18,10 @@ class DummyDB:
 
 
 def test_extract_json_with_surrounding_text():
-    assistant = recognition_assistant(None)
+    from recog_ai.utils import extract_json
+
     raw = 'Here is some text before {"title": "Test"} and after'
-    parsed = assistant._extract_json(raw)
+    parsed = extract_json(raw)
     assert parsed["title"] == "Test"
 
 
@@ -49,8 +50,8 @@ def test_module_suggestions_filters_institution():
             }
         ),
     ]
-    assistant = recognition_assistant(DummyDB(modules))
-    suggestions = assistant.getModuleSuggestions(
+    assistant = RecognitionAssistant(DummyDB(modules))
+    suggestions = assistant.get_module_suggestions(
         "doc", institution="Technische Hochschule Lübeck"
     )
     assert len(suggestions) == 1
@@ -58,16 +59,20 @@ def test_module_suggestions_filters_institution():
 
 
 def test_get_modul_info_fallback_on_error():
-    class FailingAssistant(recognition_assistant):
-        def get_chat_model(self, large_model=False, max_tokens=1024):
-            class Model:
-                def invoke(self_inner, messages):
+    class FailingAssistant(RecognitionAssistant):
+        def __init__(self, db):
+            super().__init__(db)
+            # Override LLM client to raise error
+            from recog_ai.llm_client import LLMClient
+
+            class FailingClient(LLMClient):
+                def invoke(self, messages):
                     raise RuntimeError("chat unavailable")
 
-            return Model()
+            self.llm = FailingClient()
 
     assistant = FailingAssistant(None)
-    module = assistant.getModulInfo("raw text module")
+    module = assistant.get_module_info("raw text module")
     assert module["raw_document"] == "raw text module"
     assert module["description"] == "raw text module"
     assert module["error"] == "chat unavailable"
@@ -91,16 +96,20 @@ def test_get_modul_info_parses_german_text():
         }
     )
 
-    class StubAssistant(recognition_assistant):
-        def get_chat_model(self, large_model=False, max_tokens=1024):
-            class Model:
-                def invoke(self_inner, messages):
+    class StubAssistant(RecognitionAssistant):
+        def __init__(self, db):
+            super().__init__(db)
+            # Override LLM client to return stub response
+            from recog_ai.llm_client import LLMClient
+
+            class StubClient(LLMClient):
+                def invoke(self, messages):
                     class Result:
                         content = example_response
 
                     return Result()
 
-            return Model()
+            self.llm = StubClient()
 
     assistant = StubAssistant(None)
     doc = (
@@ -108,7 +117,7 @@ def test_get_modul_info_parses_german_text():
         "Reports zu erzeugen. Die Lehrinhalte decken Datenaufbereitung und statistische Methoden ab, "
         "geprüft wird via Klausur innerhalb des Bachelorstudiums."
     )
-    module = assistant.getModulInfo(doc)
+    module = assistant.get_module_info(doc)
     assert module["title"] == "Datenanalyse für Manager"
     assert module["credits"] == 5
     assert module["learninggoals"] == [

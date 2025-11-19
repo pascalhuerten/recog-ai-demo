@@ -1,14 +1,10 @@
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
-from langchain_chroma import Chroma
-import chromadb
-from chromadb.config import Settings
-from langchain_huggingface import HuggingFaceEmbeddings
 import pdfplumber
 import json
 import os
-from dotenv import load_dotenv
-from recog_ai import recognition_assistant
+
+from recog_ai import get_embedding, get_module_database, RecognitionAssistant
 from visualize.visualize import visualize_bp, initChromaviz
 
 INSTITUTION_FILTERS = [
@@ -22,26 +18,9 @@ app = Flask(__name__)
 app.register_blueprint(visualize_bp)
 CORS(app)
 
-
-def load_embedding():
-    return HuggingFaceEmbeddings(
-        model_name="isy-thl/multilingual-e5-base-course-skill-tuned",
-        encode_kwargs={"normalize_embeddings": True, "prompt": "passage: "},
-    )
-
-
-def load_moduledb(embedding):
-    return Chroma(
-        client=chromadb.PersistentClient(
-            os.path.dirname(__file__) + "/data/modules_vectorstore"
-        ),
-        embedding_function=embedding,
-        client_settings=Settings(anonymized_telemetry=False),
-    )
-
-
-embedding = load_embedding()
-moduledb = load_moduledb(embedding)
+# Initialize embedding and module database
+embedding = get_embedding()
+moduledb = get_module_database(embedding)
 
 initChromaviz(moduledb._collection)
 
@@ -84,9 +63,9 @@ def find_module():
         # No more than 10000 characters
         doc = doc[:10000]
 
-        recog_assistant = recognition_assistant(moduledb)
+        recog_assistant = RecognitionAssistant(moduledb)
 
-        external_module_parsed = recog_assistant.getModulInfo(doc)
+        external_module_parsed = recog_assistant.get_module_info(doc)
         external_module_json = json.dumps(external_module_parsed)
         translated_doc = ""
         if external_module_parsed["title"]:
@@ -103,7 +82,7 @@ def find_module():
             translated_doc += "\n"
         if not translated_doc.strip():
             translated_doc = external_module_parsed.get("raw_document", doc)[:10000]
-        module_suggestions = recog_assistant.getModuleSuggestions(
+        module_suggestions = recog_assistant.get_module_suggestions(
             translated_doc, institution=institution_filter
         )
 
@@ -126,12 +105,12 @@ def find_module():
 # Endpunkt für die Modulauswahl und Prüfung
 @app.route("/select_module", methods=["POST"])
 def select_module():
-    recog_assistant = recognition_assistant(moduledb)
+    recog_assistant = RecognitionAssistant(moduledb)
     internal_module_json = request.form["selected_module"]
     internal_module_parsed = json.loads(internal_module_json)
 
     # Get learninggoals
-    internal_module_ai_parsed = recog_assistant.getModulInfo(internal_module_json)
+    internal_module_ai_parsed = recog_assistant.get_module_info(internal_module_json)
     internal_module_parsed["learninggoals"] = internal_module_ai_parsed["learninggoals"]
 
     external_module_json = request.form["external_module"]
@@ -139,11 +118,13 @@ def select_module():
 
     # Original_doc is not needed for processing of the examination result
     tmp = json.loads(external_module_json)
-    del tmp["original_doc"]
+    # Remove original_doc if it exists
+    if "original_doc" in tmp:
+        del tmp["original_doc"]
     external_module_json = json.dumps(tmp)
 
-    # Hier rufen wir getExaminationResult() auf und generieren das Prüfungsergebnis.
-    examination_result = recog_assistant.getExaminationResult(
+    # Hier rufen wir get_examination_result() auf und generieren das Prüfungsergebnis.
+    examination_result = recog_assistant.get_examination_result(
         internal_module_json, external_module_json
     )
 

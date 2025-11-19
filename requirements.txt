@@ -19,3 +19,4 @@ psycopg2==2.9.9
 transformers==4.42.3
 sentencepiece==0.2.0
 pytest
+pytest-cov

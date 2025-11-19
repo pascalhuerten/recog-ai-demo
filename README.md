@@ -15,7 +15,30 @@
 3. **Module Comparison and Recognition Possibility:**
    - Compares an external module with an internal module, evaluating the possibility of recognition based on predefined criteria.
 
-#### Installation
+## Project Structure
+
+The refactored codebase follows a modular, SOLID-aligned architecture:
+
+```
+recog_ai/                          # Core recognition package
+├── __init__.py                   # Package initialization and exports
+├── config.py                     # Configuration and initialization helpers
+├── llm_client.py                 # LLM client wrapper with async fallback
+├── assistant.py                  # RecognitionAssistant orchestration class
+└── utils.py                      # Utility functions (JSON parsing, metadata extraction)
+
+app.py                            # Flask application with cleaned routes
+```
+
+### Module Overview
+
+- **`config.py`**: Handles environment loading, embedding initialization, and database setup.
+- **`llm_client.py`**: Encapsulates ChatOpenAI client with fallback to async invocation if sync unavailable.
+- **`assistant.py`**: `RecognitionAssistant` class orchestrates module parsing, semantic search, and module comparison.
+- **`utils.py`**: Reusable utility functions for JSON extraction, workload parsing, and program collection.
+- **`app.py`**: Simplified Flask routes leveraging the modular helpers.
+
+## Installation
 
 To install and run the application locally, follow these steps:
 
@@ -35,18 +58,24 @@ To install and run the application locally, follow these steps:
    HOST_PORT=80 # or any port you prefer
    ```
 
-3. Creating a Vector Store (Alternative to proprietary vector store):
+3. Create a vector store (or use pre-existing):
 
    - Prepare your module descriptions in a suitable format (e.g., JSON, plain text).
    - Modify the application code to read the module descriptions and create a vector store using chromadb. Update the code adjusting paths and configurations as needed.
 
-4. Build the Docker image:
+4. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. Build the Docker image:
 
    ```bash
    docker build -t recog-ai-demo .
    ```
 
-5. Run the Docker container:
+6. Run the Docker container:
 
    ```bash
    docker run -p 80:80 recog-ai-demo
@@ -54,7 +83,43 @@ To install and run the application locally, follow these steps:
 
 The application will be accessible at `http://localhost:80`.
 
-#### How to Use
+## Development
+
+### Running Tests
+
+Unit tests and integration tests are provided:
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run only unit tests
+pytest tests/test_recog_ai.py -v
+
+# Run integration tests (requires LLM credentials)
+pytest tests/integration/ -v
+
+# Run tests with coverage report
+pytest tests/ --cov=recog_ai --cov=app
+```
+
+### Running Locally
+
+For development without Docker:
+
+```bash
+# Install dependencies in virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Run the Flask development server
+python app.py
+```
+
+The app will be available at `http://localhost:5000`.
+
+## How to Use
 
 1. Access the application at `http://localhost:80`.
 2. Upload a module description file (PDF, TXT, or XML) or enter the description in the provided text area.
