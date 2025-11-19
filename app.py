@@ -1,15 +1,21 @@
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
-from chromadb.config import Settings
+from langchain_chroma import Chroma
 import chromadb
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceInstructEmbeddings
+from chromadb.config import Settings
+from langchain_huggingface import HuggingFaceEmbeddings
 import pdfplumber
 import json
 import os
 from dotenv import load_dotenv
 from recog_ai import recognition_assistant
 from visualize.visualize import visualize_bp, initChromaviz
+
+INSTITUTION_FILTERS = [
+    {"value": "all", "label": "Alle Hochschulen"},
+    {"value": "Technische Hochschule Lübeck", "label": "Technische Hochschule Lübeck"},
+    {"value": "Universität Bielefeld", "label": "Universität Bielefeld"},
+]
 
 
 app = Flask(__name__)
@@ -18,17 +24,16 @@ CORS(app)
 
 
 def load_embedding():
-    return HuggingFaceInstructEmbeddings(
-        model_name="hkunlp/instructor-large",
-        embed_instruction="Represent the document for retrieval: ",
-        query_instruction="Represent the query for retrieval: ",
+    return HuggingFaceEmbeddings(
+        model_name="isy-thl/multilingual-e5-base-course-skill-tuned",
+        encode_kwargs={"normalize_embeddings": True, "prompt": "passage: "},
     )
 
 
 def load_moduledb(embedding):
     return Chroma(
         client=chromadb.PersistentClient(
-            os.path.dirname(__file__) + "/data/thl_modules_vectorstore"
+            os.path.dirname(__file__) + "/data/modules_vectorstore"
         ),
         embedding_function=embedding,
         client_settings=Settings(anonymized_telemetry=False),
@@ -40,15 +45,19 @@ moduledb = load_moduledb(embedding)
 
 initChromaviz(moduledb._collection)
 
+
 @app.route("/", methods=["GET"])
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
+
 
 # Endpunkt für die Startseite
 @app.route("/find_module", methods=["GET", "POST"])
 def find_module():
+    institution_filter = "all"
     if request.method == "POST":
         # Hier verarbeiten wir den Dateiupload und rufen getModuleSuggestions() auf.
+        institution_filter = request.form.get("institution_filter", "all")
         doc = None
         uploaded_file = request.files["file"]
         if uploaded_file:
@@ -92,16 +101,26 @@ def find_module():
             translated_doc += "Niveau: \n"
             translated_doc += external_module_parsed["level"]
             translated_doc += "\n"
-        module_suggestions = recog_assistant.getModuleSuggestions(translated_doc)
+        if not translated_doc.strip():
+            translated_doc = external_module_parsed.get("raw_document", doc)[:10000]
+        module_suggestions = recog_assistant.getModuleSuggestions(
+            translated_doc, institution=institution_filter
+        )
 
         return render_template(
             "module_suggestions.html",
             module_suggestions=module_suggestions,
             external_module_parsed=external_module_parsed,
             external_module_json=external_module_json,
+            institution_filter=institution_filter,
+            institution_filters=INSTITUTION_FILTERS,
         )
 
-    return render_template("module_suggestions.html")
+    return render_template(
+        "module_suggestions.html",
+        institution_filter=institution_filter,
+        institution_filters=INSTITUTION_FILTERS,
+    )
 
 
 # Endpunkt für die Modulauswahl und Prüfung

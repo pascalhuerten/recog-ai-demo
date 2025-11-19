@@ -29,7 +29,10 @@ To install and run the application locally, follow these steps:
 2. Create a `.env` file in the project root and set your OpenAI API key:
 
    ```plaintext
-   OPENAI_API_KEY=your_openai_api_key
+   OPENAI_API_KEY=your_openai_api_key_here or any openai compatible api key
+   LLM_URL=API_endpoint_of_openai_compatible_api
+   LLM_MODEL=gemma-3-27b-it # or any model supported by your API
+   HOST_PORT=80 # or any port you prefer
    ```
 
 3. Creating a Vector Store (Alternative to proprietary vector store):

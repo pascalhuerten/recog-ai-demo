@@ -1,57 +1,75 @@
+import asyncio
 import json
-from langchain_openai import ChatOpenAI
-from langchain_mistralai.chat_models import ChatMistralAI
-from langchain.schema import HumanMessage, SystemMessage
-import markdown
+import logging
 import os
 import isodate
-from typing import List, Optional
-from langchain.prompts import PromptTemplate
-from langchain.output_parsers import PydanticOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
+import markdown
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
 
+MODULE_SCHEMA = {
+    "title": {"type": "string", "description": "Titel des Moduls"},
+    "credits": {"type": "number", "minimum": 0, "description": "ECTS-Punkte"},
+    "workload": {"type": ["string", "null"], "description": "Arbeitsaufwand"},
+    "learninggoals": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Lernziele",
+    },
+    "assessmenttype": {"type": ["string", "null"], "description": "Prüfungsform"},
+    "level": {"type": ["string", "null"], "description": "Bildungsniveau"},
+    "program": {"type": ["string", "null"], "description": "Studiengänge"},
+    "institution": {"type": ["string", "null"], "description": "Institution"},
+}
 
-class ModuleSchema(BaseModel):
-    title: str = Field(description="Titel des Moduls")
-    credits: Optional[int] = Field(None, description="ECTS-Punkte des Moduls")
-    workload: Optional[str] = Field(
-        None,
-        description="Arbeitsaufwand des Moduls in Stunden pro Semester. Beispiel: 'X Stunden'",
-    )
-    learninggoals: List[str] = Field(
-        description="Lernziele des Moduls. Jedes Lernziel ist ein einfacher String. Beispiel: ['Lernziel 1', 'Lernziel 2']"
-    )
-    assessmenttype: Optional[str] = Field(None, description="Prüfungsform des Moduls")
-    level: Optional[str] = Field(
-        None, description="Bildungsniveau des Moduls. 'Bachelor' oder 'Master'"
-    )
+logger = logging.getLogger(__name__)
 
 
 class recognition_assistant:
     def __init__(self, db):
         self.db = db
 
-    def getModuleSuggestions(self, doc):
-        docs = self.db.similarity_search_with_score(doc, 5)
+    def getModuleSuggestions(self, doc, institution=None, limit=5):
+        docs = self.db.similarity_search_with_score(doc, limit)
 
         module_suggestions = []
         for module, score in docs:
             workload = ""
             try:
-                workload_iso = module.metadata["workload"]
+                workload_iso = module.metadata.get("duration") or module.metadata.get(
+                    "workload"
+                )
                 duration = isodate.parse_duration(workload_iso)
                 hours = int(duration.total_seconds() / 3600)
                 workload = str(hours) + " Stunden"
             except:
-                workload = "~" + str(int(module.metadata["credits"]) * 30) + " Stunden"
+                credits = module.metadata.get("credits")
+                if credits:
+                    workload = "~" + str(int(credits) * 30) + " Stunden"
+                else:
+                    workload = ""
+
+            module_institution = module.metadata.get("institution")
+            if institution and module_institution:
+                if (
+                    module_institution.strip().lower() != institution.strip().lower()
+                    and institution.lower() != "all"
+                ):
+                    continue
 
             module_info = {
-                "title": module.metadata["title"],
-                "credits": module.metadata["credits"],
+                "title": module.metadata.get("title")
+                or module.metadata.get("name")
+                or "",
+                "credits": module.metadata.get("credits"),
                 "workload": workload,
-                "description": module.metadata["description"],
-                "level": module.metadata["level"],
-                "program": module.metadata["program"],
+                "description": module.metadata.get("description")
+                or module.metadata.get("learning_outcomes")
+                or "",
+                "level": module.metadata.get("level"),
+                "program": self._collect_programs(module.metadata),
+                "institution": module_institution,
                 "content": module.page_content,
             }
             module_info["json"] = json.dumps(module_info)
@@ -61,10 +79,40 @@ class recognition_assistant:
         # Return the module suggestions
         return module_suggestions
 
+    def _collect_programs(self, metadata):
+        programs = metadata.get("programs") or metadata.get("program")
+        if isinstance(programs, (list, tuple)):
+            return ", ".join(programs)
+        return programs or ""
+
+    def _extract_json(self, text):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            start = text.find("{")
+            end = text.rfind("}")
+            if 0 <= start < end:
+                try:
+                    return json.loads(text[start : end + 1])
+                except json.JSONDecodeError:
+                    pass
+            raise
+
+    def _invoke_model(self, model, messages):
+        try:
+            return model.invoke(messages)
+        except ValueError as exc:
+            if "Sync client is not available" not in str(exc):
+                raise
+            logger.info("Sync client unavailable, invoking async model")
+            if not hasattr(model, "ainvoke"):
+                raise
+            return asyncio.run(model.ainvoke(messages))
+
     def get_chat_model(self, large_model=False, max_tokens=1024):
         thl_chat = ChatOpenAI(
-            model="gemma-3-27b-it",
-            openai_api_base=os.getenv("LARGE_CUSTOM_LLM_URL"),
+            model=os.getenv("LLM_MODEL"),
+            openai_api_base=os.getenv("LLM_URL"),
             openai_api_key=os.getenv("LLM_API_KEY"),
             temperature=0.1,
             max_tokens=max_tokens,
@@ -82,46 +130,61 @@ class recognition_assistant:
                 doc += key + ": " + str(jsondoc[key]) + "\n"
         except:
             doc = indoc
-        
-        template = (
+
+        schema_json = json.dumps(MODULE_SCHEMA, indent=2, sort_keys=True)
+        schema_json_safe = (
+            schema_json.replace("{", "{{").replace("}", "}}").replace("\n", "\n")
+        )
+        system_prompt = (
+            "Du bekommst eine akademische Modulbeschreibung. Extrahiere alle relevanten Metadaten und gib sie als JSON-Objekt aus.\n\n"
+            "Die Antwort muss ausschließlich gültiges JSON sein, das mit dem folgenden Schema übereinstimmt:\n"
+            f"{schema_json_safe}\n"
+            "Nutze deutsche Feldbeschreibungen und vermeide zusätzlichen Fließtext.\n"
+            "Wenn du Informationen nicht hast, verwende leere Strings oder leere Listen."
+        )
+        human_prompt = (
             "Folgendes Dokument ist gegeben:\n"
             "{doc}\n\n"
-            "Analysiere die gegebene Modulbeschreibung oder erbrachte Leistung und extrahiere die relevanten Metadaten.\n\n"
-            "{format_instructions}\n\n"
-            "Gebe nun die extrahierten Modulinformation in deutscher Sprache und konform zum angegeben Schema aus.\n"
+            "Achte auf Titel, Credits, Lernziele, Bildungsniveau, Arbeitsaufwand und Prüfungsform."
         )
 
-        parser = PydanticOutputParser(pydantic_object=ModuleSchema)
+        prompt = ChatPromptTemplate(
+            [
+                ("system", system_prompt),
+                ("human", human_prompt),
+            ]
+        )
+
         model = self.get_chat_model(False, 4096)
-        prompt = PromptTemplate(
-            template=template,
-            input_variables=["doc"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
+        prompt_value = prompt.invoke(
+            {
+                "doc": doc,
+            }
         )
-
-        chain = prompt | model | parser
+        messages = prompt_value.to_messages()
 
         try:
-            module = chain.invoke({"doc": doc})
-            # to dict
-            module = module.dict()
-            # if module is a list, take the first element
+            response = self._invoke_model(model, messages).content
+            module = self._extract_json(response)
             if isinstance(module, list):
                 module = module[0]
 
-            if module["learninggoals"] and len(module["learninggoals"]) > 0 and isinstance(module["learninggoals"][0], dict):
+            if (
+                module["learninggoals"]
+                and len(module["learninggoals"]) > 0
+                and isinstance(module["learninggoals"][0], dict)
+            ):
                 strlist = []
-                # Get values of the dict in the list
                 for item in module["learninggoals"]:
-                    for key, value in item.items():
+                    for _, value in item.items():
                         strlist.append(value)
                 module["learninggoals"] = strlist
-            
-            print(module)
-            # Remove all characters before and after {}
+
+            logger.info("Extracted module info with title=%s", module.get("title"))
             module["original_doc"] = doc
+            module["raw_document"] = doc
         except Exception as e:
-            print(e)
+            logger.exception("Module extraction failed, falling back to raw text")
             module = {
                 "title": "",
                 "credits": "",
@@ -129,7 +192,13 @@ class recognition_assistant:
                 "learninggoals": [],
                 "assessmenttype": "",
                 "level": "",
+                "description": doc,
+                "program": "",
+                "institution": "",
             }
+            module["original_doc"] = doc
+            module["raw_document"] = doc
+            module["error"] = str(e)
 
         return module
 
